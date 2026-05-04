@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plan de Ahorro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #F5F2EC;
+      --surface:   #FFFFFF;
+      --ink:       #1A1814;
+      --ink2:      #6B6760;
+      --ink3:      #A8A49E;
+      --accent:    #2D5A3D;
+      --accent2:   #4A8C60;
+      --accent-bg: #EAF2EC;
+      --warn:      #B84A1E;
+      --warn-bg:   #FDF0EB;
+      --border:    rgba(26,24,20,0.10);
+      --border2:   rgba(26,24,20,0.06);
+      --radius:    12px;
+      --radius-sm: 7px;
+      --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      --trans:     0.18s ease;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:        #141210;
+        --surface:   #1E1C19;
+        --ink:       #F0EDE6;
+        --ink2:      #9A9590;
+        --ink3:      #5A5650;
+        --accent:    #5BAF78;
+        --accent2:   #7DC895;
+        --accent-bg: #162218;
+        --warn:      #E07050;
+        --warn-bg:   #211208;
+        --border:    rgba(240,237,230,0.08);
+        --border2:   rgba(240,237,230,0.04);
+        --shadow:    0 1px 3px rgba(0,0,0,0.3);
+      }
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100dvh;
+      padding: 0 0 4rem;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-left h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.35rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .header-left p {
+      font-size: 0.75rem;
+      color: var(--ink3);
+      margin-top: 1px;
+    }
+
+    .sync-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--ink3);
+      transition: background var(--trans);
+    }
+    .sync-dot.online  { background: var(--accent2); }
+    .sync-dot.syncing { background: #D4A017; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Setup Screen ───────────────────────────────────── */
+    #setup-screen {
+      max-width: 420px;
+      margin: 4rem auto;
+      padding: 0 1.5rem;
+    }
+    #setup-screen h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.8rem;
+      font-weight: 400;
+      margin-bottom: .5rem;
+    }
+    #setup-screen p {
+      color: var(--ink2);
+      font-size: .875rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .setup-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .field { margin-bottom: 1.25rem; }
+    .field label {
+      display: block;
+      font-size: .75rem;
+      font-weight: 500;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--ink2);
+      margin-bottom: .4rem;
+    }
+    .field input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .65rem .9rem;
+      font-size: .95rem;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      outline: none;
+      transition: border-color var(--trans);
+    }
+    .field input:focus { border-color: var(--accent2); }
+    .field .hint {
+      font-size: .72rem;
+      color: var(--ink3);
+      margin-top: .3rem;
+    }
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: .75rem 1rem;
+      font-size: .95rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity var(--trans), transform var(--trans);
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Main App ───────────────────────────────────────── */
+    #app-screen { display: none; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 0 1.25rem; }
+
+    /* ── Month Nav ──────────────────────────────────────── */
+    .month-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 0 .75rem;
+    }
+    .month-label {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem;
+      font-weight: 400;
+      letter-spacing: -.02em;
+    }
+    .month-btns { display: flex; gap: .5rem; }
+    .icon-btn {
+      width: 34px; height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--ink2);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--trans), border-color var(--trans);
+    }
+    .icon-btn:hover { background: var(--accent-bg); border-color: var(--accent2); color: var(--accent); }
+
+    /* ── Stats ──────────────────────────────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    @media (min-width: 480px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .9rem 1rem;
+      box-shadow: var(--shadow);
+    }
+    .stat-label {
+      font-size: .68rem;
+      font-weight: 500;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: .3rem;
+    }
+    .stat-value {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--ink);
+    }
+    .stat-value.green { color: var(--accent); }
+    .stat-value.red   { color: var(--warn); }
+    .stat-value.blue  { color: #2563EB; }
+
+    /* ── Progress ───────────────────────────────────────── */
+    .progress-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: .6rem;
+    }
+    .progress-title { font-size: .8rem; font-weight: 500; color: var(--ink2); }
+    .progress-pct   { font-size: .8rem; font-weight: 500; color: var(--accent); }
+    .progress-track {
+      background: var(--border2);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: var(--accent);
+      transition: width .5s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Alert ──────────────────────────────────────────── */
+    .alert {
+      background: var(--warn-bg);
+      border: 1px solid rgba(184,74,30,.2);
+      border-radius: var(--radius);
+      padding: .85rem 1rem;
+      font-size: .82rem;
+      color: var(--warn);
+      line-height: 1.5;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .alert.show { display: block; }
+
+    /* ── Meta input ─────────────────────────────────────── */
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: 1rem;
+    }
+    .meta-row label { font-size: .78rem; color: var(--ink2); white-space: nowrap; }
+    .meta-input {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .45rem .75rem;
+      font-size: .9rem;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+      background: var(--surface);
+      width: 160px;
+      outline: none;
+      transition: border-color var(--trans);
+    }
+    .meta-input:focus { border-color: var(--accent2); }
+
+    /* ── Calendar ───────────────────────────────────────── */
+    .cal-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+    }
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border-bottom: 1px solid var(--border);
+    }
+    .wd {
+      text-align: center;
+      font-size: .65rem;
+      font-weight: 500;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      padding: .6rem 0;
+    }
+    .wd.wknd { color: var(--accent); }
+
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .day {
+      border-right: 1px solid var(--border2);
+      border-bottom: 1px solid var(--border2);
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: .4rem .2rem;
+      position: relative;
+    }
+    .day:nth-child(7n) { border-right: none; }
+
+    .day.inactive { background: var(--bg); }
+    .day.weekend  { cursor: pointer; transition: background var(--trans); }
+    .day.weekend:hover { background: var(--accent-bg); }
+    .day.today    { outline: 2px solid var(--accent2); outline-offset: -2px; }
+    .day.deposited { background: var(--accent-bg); }
+    .day.missed   { background: var(--warn-bg); }
+    .day.future   { opacity: .45; pointer-events: none; }
+
+    .day-num {
+      font-size: .72rem;
+      font-weight: 500;
+      color: var(--ink3);
+      margin-bottom: 2px;
+    }
+    .day.weekend  .day-num { color: var(--accent); }
+    .day.deposited .day-num { color: var(--accent); font-weight: 600; }
+    .day.missed   .day-num { color: var(--warn); }
+    .day.today    .day-num { color: var(--accent); }
+
+    .day-amount {
+      font-size: .65rem;
+      font-weight: 500;
+      color: var(--accent);
+      text-align: center;
+      line-height: 1.2;
+    }
+    .day-check {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .day-check svg { width: 8px; height: 8px; }
+    .day.deposited .day-check { display: flex; }
+
+    /* ── Legend ─────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .72rem;
+      color: var(--ink2);
+    }
+    .legend-swatch {
+      width: 10px; height: 10px;
+      border-radius: 3px;
+    }
+
+    /* ── Modal ──────────────────────────────────────────── */
+    .modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+    @media (min-width: 480px) { .modal-bg { align-items: center; } }
+    .modal-bg.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 340px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      animation: slideUp .2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } }
+
+    .modal-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      margin-bottom: 1rem;
+    }
+    .modal input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .65rem .9rem;
+      font-size: 1.1rem;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      outline: none;
+      margin-bottom: 1rem;
+      transition: border-color var(--trans);
+    }
+    .modal input:focus { border-color: var(--accent2); }
+    .modal-btns { display: flex; gap: .6rem; }
+    .btn-ghost {
+      flex: 1;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .65rem;
+      font-size: .88rem;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink2);
+      cursor: pointer;
+      transition: background var(--trans);
+    }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-save {
+      flex: 2;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: .65rem;
+      font-size: .88rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity var(--trans);
+    }
+    .btn-save:hover { opacity: .88; }
+    .btn-delete {
+      flex: 1;
+      background: none;
+      border: 1px solid rgba(184,74,30,.3);
+      border-radius: var(--radius-sm);
+      padding: .65rem;
+      font-size: .88rem;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--warn);
+      cursor: pointer;
+      transition: background var(--trans);
+    }
+    .btn-delete:hover { background: var(--warn-bg); }
+
+    /* ── Firebase Config Notice ─────────────────────────── */
+    .config-notice {
+      background: #FEF9E7;
+      border: 1px solid #F5CBA7;
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      font-size: .8rem;
+      color: #784212;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      .config-notice { background: #1A1205; border-color: #4A3000; color: #C9A227; }
+    }
+    .config-notice code {
+      font-family: monospace;
+      background: rgba(0,0,0,.07);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .config-notice code { background: rgba(255,255,255,.1); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────── -->
+<header>
+  <div class="header-left">
+    <h1>Plan de Ahorro</h1>
+    <p id="header-sub">Cargando…</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:.5rem;">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span style="font-size:.72rem;color:var(--ink3);" id="sync-label">—</span>
+  </div>
+</header>
+
+<!-- ── Setup Screen ────────────────────────────────────── -->
+<div id="setup-screen">
+  <h2>Configura tu plan</h2>
+  <p>Esta app se sincroniza en tiempo real con tu pareja. Crea un plan compartido o únete a uno existente.</p>
+
+  <!-- Firebase config notice -->
+  <div class="config-notice" id="firebase-notice">
+    ⚙️ <strong>Antes de usar:</strong> edita el archivo <code>index.html</code> y reemplaza el bloque
+    <code>firebaseConfig</code> con las credenciales de tu proyecto Firebase.
+    Consulta <code>README.md</code> para el paso a paso.
+  </div>
+
+  <div class="setup-card">
+    <div class="field">
+      <label>Código del plan</label>
+      <input type="text" id="plan-id-input" placeholder="ej. familia-garcia-2025" maxlength="40" />
+      <div class="hint">Usa el mismo código en ambos dispositivos para compartir datos.</div>
+    </div>
+    <div class="field">
+      <label>Tu nombre</label>
+      <input type="text" id="user-name-input" placeholder="ej. Carlos" maxlength="20" />
+    </div>
+    <button class="btn-primary" id="enter-btn">Entrar al plan →</button>
+  </div>
+</div>
+
+<!-- ── App Screen ─────────────────────────────────────── -->
+<div id="app-screen">
+  <div class="container">
+
+    <div class="month-bar">
+      <div class="month-label" id="month-label"></div>
+      <div class="month-btns">
+        <button class="icon-btn" id="prev-btn">&#8592;</button>
+        <button class="icon-btn" id="next-btn">&#8594;</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Meta</div>
+        <div class="stat-value blue" id="st-meta">$0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Depositado</div>
+        <div class="stat-value green" id="st-dep">$0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Faltante</div>
+        <div class="stat-value red" id="st-falta">$0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Fines perdidos</div>
+        <div class="stat-value red" id="st-miss">0</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap">
+      <div class="progress-header">
+        <span class="progress-title">Progreso mensual</span>
+        <span class="progress-pct" id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Alert -->
+    <div class="alert" id="alert-box"></div>
+
+    <!-- Meta input -->
+    <div class="meta-row">
+      <label>Meta mensual: $</label>
+      <input type="number" class="meta-input" id="meta-input" placeholder="ej. 5000" min="1" />
+    </div>
+
+    <!-- Calendar -->
+    <div class="cal-wrap">
+      <div class="weekdays">
+        <div class="wd wknd">Dom</div>
+        <div class="wd">Lun</div>
+        <div class="wd">Mar</div>
+        <div class="wd">Mié</div>
+        <div class="wd">Jue</div>
+        <div class="wd">Vie</div>
+        <div class="wd wknd">Sáb</div>
+      </div>
+      <div class="days" id="calendar"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--accent-bg);border:1px solid var(--accent2);"></div>
+        Depositado
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--warn-bg);border:1px solid rgba(184,74,30,.3);"></div>
+        Sin depósito
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--surface);border:2px solid var(--accent2);"></div>
+        Hoy
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:var(--bg);border:1px solid var(--border);"></div>
+        Día de semana
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Modal ──────────────────────────────────────────── -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Registrar depósito</div>
+    <input type="number" id="modal-amount" placeholder="Cantidad ($)" min="0" />
+    <div class="modal-btns" id="modal-btns">
+      <button class="btn-ghost" id="modal-cancel">Cancelar</button>
+      <button class="btn-save"  id="modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Firebase SDK ────────────────────────────────────── -->
+<script type="module">
+  import { initializeApp }            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  /* ══════════════════════════════════════════════════════
+     🔧 REEMPLAZA ESTE BLOQUE CON TUS CREDENCIALES FIREBASE
+     ══════════════════════════════════════════════════════ */
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDvvTK12HxlT1Wnd1qsq4QgS77gDHEthxg",
+    authDomain:        "prom-fund-2026.firebaseapp.com",
+    projectId:         "prom-fund-2026",
+    storageBucket:     "prom-fund-2026.firebasestorage.app",
+    messagingSenderId: "411020264704",
+    appId:             "1:411020264704:web:cfd36912b208fb93415fe5"
+  };
+  /* ══════════════════════════════════════════════════════ */
+
+  const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const MONTHS_LC = ['enero','febrero','marzo','abril','mayo','junio',
+                     'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+  let db, planId, userName;
+  let curYear, curMonth;
+  let selectedDay = null;
+  let monthData   = {};   // { meta, deposits: { "YYYY-MM-DD": amount } }
+  let unsubscribe = null;
+
+  /* ── Firebase Init ──────────────────────────────────── */
+  function initFirebase() {
+    try {
+      if (firebaseConfig.apiKey === 'TU_API_KEY') return false;
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      return true;
+    } catch(e) { return false; }
+  }
+
+  /* ── Helpers ────────────────────────────────────────── */
+  function pad(n)  { return String(n).padStart(2,'0'); }
+  function fmt(n)  { return '$' + Math.round(n).toLocaleString('es-MX'); }
+  function isWknd(y,m,d) { const dow = new Date(y,m,d).getDay(); return dow===0||dow===6; }
+  function docPath() { return `plans/${planId}/months/${curYear}-${pad(curMonth+1)}`; }
+  function setSyncState(state) {
+    const dot   = document.getElementById('sync-dot');
+    const label = document.getElementById('sync-label');
+    dot.className = 'sync-dot ' + state;
+    label.textContent = state==='online' ? 'Sincronizado' : state==='syncing' ? 'Guardando…' : 'Sin conexión';
+  }
+
+  /* ── Firestore I/O ──────────────────────────────────── */
+  function subscribeMonth() {
+    if (unsubscribe) unsubscribe();
+    setSyncState('syncing');
+    const ref = doc(db, docPath());
+    unsubscribe = onSnapshot(ref, snap => {
+      monthData = snap.exists() ? snap.data() : { meta: 0, deposits: {} };
+      if (!monthData.deposits) monthData.deposits = {};
+      setSyncState('online');
+      renderApp();
+    }, () => setSyncState(''));
+  }
+
+  async function saveMonthData() {
+    setSyncState('syncing');
+    try {
+      await setDoc(doc(db, docPath()), monthData);
+      setSyncState('online');
+    } catch(e) { setSyncState(''); }
+  }
+
+  /* ── Setup ──────────────────────────────────────────── */
+  const firebaseReady = initFirebase();
+
+  document.getElementById('enter-btn').addEventListener('click', () => {
+    const id   = document.getElementById('plan-id-input').value.trim().toLowerCase().replace(/\s+/g,'-');
+    const name = document.getElementById('user-name-input').value.trim();
+    if (!id || !name) { alert('Por favor completa ambos campos.'); return; }
+    if (!firebaseReady) { alert('Configura las credenciales de Firebase en el archivo index.html.'); return; }
+
+    planId   = id;
+    userName = name;
+    localStorage.setItem('ahorro_plan',  planId);
+    localStorage.setItem('ahorro_name',  userName);
+
+    showApp();
+  });
+
+  /* ── Restore session ────────────────────────────────── */
+  const savedPlan = localStorage.getItem('ahorro_plan');
+  const savedName = localStorage.getItem('ahorro_name');
+  if (savedPlan && savedName && firebaseReady) {
+    planId = savedPlan; userName = savedName;
+    showApp();
+  } else {
+    if (!firebaseReady) document.getElementById('firebase-notice').style.display='block';
+  }
+
+  function showApp() {
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display   = 'block';
+    document.getElementById('header-sub').textContent = `Plan: ${planId} · ${userName}`;
+
+    const now = new Date();
+    curYear   = now.getFullYear();
+    curMonth  = now.getMonth();
+    subscribeMonth();
+  }
+
+  /* ── Render ─────────────────────────────────────────── */
+  function renderApp() {
+    const today  = new Date();
+    const tY = today.getFullYear(), tM = today.getMonth(), tD = today.getDate();
+    const isCurMo = (curYear===tY && curMonth===tM);
+    const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+
+    document.getElementById('month-label').textContent = `${MONTHS_ES[curMonth]} ${curYear}`;
+
+    const meta     = monthData.meta || 0;
+    const deposits = monthData.deposits || {};
+
+    let totalDep = 0, missed = 0;
+    for (let d=1; d<=daysInMonth; d++) {
+      if (!isWknd(curYear,curMonth,d)) continue;
+      const key = `${curYear}-${pad(curMonth+1)}-${pad(d)}`;
+      totalDep += deposits[key] || 0;
+      const isPast = new Date(curYear,curMonth,d) < new Date(tY,tM,tD);
+      if (isPast && !deposits[key]) missed++;
+    }
+
+    const falta = Math.max(0, meta - totalDep);
+    const pct   = meta > 0 ? Math.min(100,(totalDep/meta)*100) : 0;
+
+    document.getElementById('st-meta').textContent  = fmt(meta);
+    document.getElementById('st-dep').textContent   = fmt(totalDep);
+    document.getElementById('st-falta').textContent = fmt(falta);
+    document.getElementById('st-miss').textContent  = missed;
+    document.getElementById('progress-pct').textContent  = pct.toFixed(0)+'%';
+    document.getElementById('progress-fill').style.width = pct.toFixed(1)+'%';
+
+    const alertEl = document.getElementById('alert-box');
+    if (missed > 0 && meta > 0 && isCurMo) {
+      let remWknd = 0;
+      for (let d=tD; d<=daysInMonth; d++) if (isWknd(curYear,curMonth,d)) remWknd++;
+      const perDay = remWknd > 0 ? Math.ceil(falta/remWknd) : falta;
+      alertEl.textContent = `Tienes ${missed} fin(es) de semana sin depósito. Para llegar a tu meta necesitas depositar ~${fmt(perDay)} en cada uno de los ${remWknd} días de fin de semana restantes.`;
+      alertEl.classList.add('show');
+    } else { alertEl.classList.remove('show'); }
+
+    // Calendar
+    const cal = document.getElementById('calendar');
+    cal.innerHTML = '';
+    const firstDow = new Date(curYear, curMonth, 1).getDay();
+
+    for (let i=0; i<firstDow; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'day inactive';
+      cal.appendChild(empty);
+    }
+
+    for (let d=1; d<=daysInMonth; d++) {
+      const wknd   = isWknd(curYear,curMonth,d);
+      const key    = `${curYear}-${pad(curMonth+1)}-${pad(d)}`;
+      const dep    = deposits[key] || 0;
+      const isToday = isCurMo && d===tD;
+      const isFuture= new Date(curYear,curMonth,d) > today;
+      const isPast  = new Date(curYear,curMonth,d) < new Date(tY,tM,tD);
+
+      const el = document.createElement('div');
+      let cls = 'day';
+      if (!wknd) {
+        cls += ' inactive';
+      } else {
+        cls += ' weekend';
+        if (isToday)         cls += ' today';
+        else if (isFuture)   cls += ' future';
+        else if (dep > 0)    cls += ' deposited';
+        else if (isPast)     cls += ' missed';
+      }
+      el.className = cls;
+
+      const numEl = document.createElement('div');
+      numEl.className = 'day-num';
+      numEl.textContent = d;
+      el.appendChild(numEl);
+
+      if (dep > 0) {
+        const amtEl = document.createElement('div');
+        amtEl.className = 'day-amount';
+        amtEl.textContent = fmt(dep);
+        el.appendChild(amtEl);
+
+        const chk = document.createElement('div');
+        chk.className = 'day-check';
+        chk.innerHTML = `<svg viewBox="0 0 8 8"><polyline points="1,4 3,6 7,2" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        el.appendChild(chk);
+      }
+
+      if (wknd && !isFuture) {
+        el.addEventListener('click', () => openModal(d, dep));
+      }
+
+      cal.appendChild(el);
+    }
+  }
+
+  /* ── Meta input ─────────────────────────────────────── */
+  document.getElementById('meta-input').addEventListener('change', async e => {
+    const val = parseFloat(e.target.value) || 0;
+    monthData.meta = val;
+    await saveMonthData();
+  });
+
+  // Sync meta input value when data loads
+  const origRender = renderApp;
+
+  /* ── Month nav ──────────────────────────────────────── */
+  document.getElementById('prev-btn').addEventListener('click', () => {
+    curMonth--; if(curMonth<0){curMonth=11;curYear--;}
+    monthData={meta:0,deposits:{}}; subscribeMonth();
+  });
+  document.getElementById('next-btn').addEventListener('click', () => {
+    curMonth++; if(curMonth>11){curMonth=0;curYear++;}
+    monthData={meta:0,deposits:{}}; subscribeMonth();
+  });
+
+  /* ── Modal ──────────────────────────────────────────── */
+  function openModal(day, currentDep) {
+    selectedDay = day;
+    document.getElementById('modal-title').textContent =
+      `Depósito — ${day} de ${MONTHS_LC[curMonth]}`;
+    document.getElementById('modal-amount').value = currentDep || '';
+
+    const btns = document.getElementById('modal-btns');
+    btns.innerHTML = '';
+    const cancel = document.createElement('button');
+    cancel.className='btn-ghost'; cancel.textContent='Cancelar';
+    cancel.onclick = () => closeModal();
+
+    const save = document.createElement('button');
+    save.className='btn-save'; save.textContent='Guardar';
+    save.onclick = () => saveDeposit();
+
+    if (currentDep > 0) {
+      const del = document.createElement('button');
+      del.className='btn-delete'; del.textContent='Borrar';
+      del.onclick = () => deleteDeposit();
+      btns.appendChild(cancel);
+      btns.appendChild(del);
+      btns.appendChild(save);
+    } else {
+      btns.appendChild(cancel);
+      btns.appendChild(save);
+    }
+
+    document.getElementById('modal-bg').classList.add('open');
+    setTimeout(() => document.getElementById('modal-amount').focus(), 80);
+  }
+
+  function closeModal() {
+    document.getElementById('modal-bg').classList.remove('open');
+    selectedDay = null;
+  }
+
+  async function saveDeposit() {
+    const val = parseFloat(document.getElementById('modal-amount').value) || 0;
+    if (val <= 0) { deleteDeposit(); return; }
+    const key = `${curYear}-${pad(curMonth+1)}-${pad(selectedDay)}`;
+    monthData.deposits[key] = val;
+    closeModal();
+    await saveMonthData();
+  }
+
+  async function deleteDeposit() {
+    const key = `${curYear}-${pad(curMonth+1)}-${pad(selectedDay)}`;
+    delete monthData.deposits[key];
+    closeModal();
+    await saveMonthData();
+  }
+
+  document.getElementById('modal-bg').addEventListener('click', e => {
+    if (e.target===document.getElementById('modal-bg')) closeModal();
+  });
+  document.getElementById('modal-amount').addEventListener('keydown', e => {
+    if (e.key==='Enter') saveDeposit();
+    if (e.key==='Escape') closeModal();
+  });
+
+  // Patch renderApp to also sync meta input
+  const _render = renderApp;
+  window._renderApp = function() {
+    _render();
+    const mi = document.getElementById('meta-input');
+    if (document.activeElement !== mi) mi.value = (monthData.meta || '') || '';
+  };
+
+  // Override snapshot to call patched version
+  // (already wired: onSnapshot calls renderApp directly)
+</script>
+
+</body>
+</html>
